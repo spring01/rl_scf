@@ -79,8 +79,8 @@ class G09Interface(object):
 
     # Initial guess density matrix
     def GuessDensity(self):
-        numElecAB = list(set(self.numElecAB))[::-1]
-        guessOccMOList = tuple(self._harrisMO[:, :ne] for ne in numElecAB)
+        numElecAB = tuple(np.unique(self.numElecAB)[::-1])
+        guessOccMOList = (self._harrisMO[:, :ne] for ne in numElecAB)
         return tuple(gmo.dot(gmo.T) for gmo in guessOccMOList)
 
     # Construct a list of Fock matrix and calculate energy
