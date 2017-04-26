@@ -15,5 +15,4 @@ intf = G09Interface(info)
 
 guessDensity = intf.GuessDensity()
 print intf.GuessDensity()
-print intf.GuessOccMO()
 print intf.FockEnergy(guessDensity)

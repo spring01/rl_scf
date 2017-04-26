@@ -1,3 +1,16 @@
+"""
+An interface needs properties:
+
+    numElecAB
+    overlap
+    oneElecHam
+
+Needs methods:
+
+    GuessDensity()
+    FockEnergy(densTup)
+
+"""
 
 import subprocess
 import re
@@ -5,7 +18,8 @@ import struct
 import tempfile
 import numpy as np
 
-# Works in conjunction with g09d01_backend
+
+""" Works in conjunction with g09d01_backend """
 class G09Interface(object):
 
     _intBytes = 4
@@ -24,7 +38,7 @@ class G09Interface(object):
                 if 'alpha electrons' in line:
                     numElecABStr = re.findall(r'[\d]+', line)
                     break
-        self.numElecAB = [int(num) for num in numElecABStr]
+        self.numElecAB = tuple(int(num) for num in numElecABStr)
         with open(self._workDat, 'rb') as fDat:
             matrixBytes = struct.unpack('i', fDat.read(self._intBytes))[0]
             nbf = int(np.sqrt(matrixBytes / float(self._floatBytes)))
@@ -63,23 +77,19 @@ class G09Interface(object):
         self._gjf_header = '\n'.join(header)
         self._gjf_body = '\n'.join(body)
 
-    # Initial guess occupied molecular orbital
-    def GuessOccMO(self):
-        numElecAB = list(set(self.numElecAB))[::-1]
-        return [self._harrisMO[:, :ne] for ne in numElecAB]
-
     # Initial guess density matrix
     def GuessDensity(self):
-        guessMOList = self.GuessOccMO()
-        return [gmo.dot(gmo.T) for gmo in guessMOList]
+        numElecAB = list(set(self.numElecAB))[::-1]
+        guessOccMOList = tuple(self._harrisMO[:, :ne] for ne in numElecAB)
+        return tuple(gmo.dot(gmo.T) for gmo in guessOccMOList)
 
     # Construct a list of Fock matrix and calculate energy
-    def FockEnergy(self, densList):
+    def FockEnergy(self, densTup):
         nbf = self.overlap.shape[0]
         nbfSq = nbf**2
         packedMatrixBytes = struct.pack('i', self._floatBytes * nbfSq)
         with open(self._workDat, 'wb') as fDat:
-            for dens in densList:
+            for dens in densTup:
                 fDat.write(packedMatrixBytes)
                 dens.tofile(fDat)
                 fDat.write(packedMatrixBytes)
@@ -94,7 +104,7 @@ class G09Interface(object):
                 fock = np.fromfile(fDat, float, nbfSq).reshape(nbf, nbf)
                 fDat.read(self._intBytes)
                 fockList.append(fock)
-        return fockList, energy
+        return tuple(fockList), energy
 
     def _RunG09(self, keyword):
         gjf = ''.join([self._gjf_header, keyword, self._gjf_body])
