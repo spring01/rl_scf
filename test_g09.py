@@ -7,11 +7,14 @@ cart = np.array([[8, 0.0,  0.000000,  0.110200],
                  [1, 0.0, -0.711600, -0.440800]])
 
 info = {'cart': cart,
-        'basis': '6-31g',
+        'basis': 'sto-3g',
         'charge': 0,
-        'multiplicity': 1}
+        'mult': 3}
 
 intf = G09Interface(info)
 
-print intf.GuessDensity()
+np.set_printoptions(precision=3, linewidth=100)
+guessDensity = intf.GuessDensity()
+print guessDensity
 print intf.FockEnergy(guessDensity)
+

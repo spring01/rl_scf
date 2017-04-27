@@ -66,7 +66,7 @@ class G09Interface(object):
                             'iop(5/13=1,5/18=-2) scf(maxcycle=1,vshift=-1) '])
         header.append(cmdLine)
         body = ['', '', 'dummy title', '']
-        body.append('{:3d} {:3d}'.format(info['charge'], info['multiplicity']))
+        body.append('{:3d} {:3d}'.format(info['charge'], info['mult']))
         cartEntryFormat = '{:3d}' + ' {:15.10f}' * 3
         for line in info['cart']:
             atomNum = int(line[0])
