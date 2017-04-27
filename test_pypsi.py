@@ -1,6 +1,6 @@
 
 import numpy as np
-from g09interface import G09Interface
+from pypsi_interface import PyPsiInterface
 
 cart = np.array([[8, 0.0,  0.000000,  0.110200],
                  [1, 0.0,  0.711600, -0.440800],
@@ -8,10 +8,11 @@ cart = np.array([[8, 0.0,  0.000000,  0.110200],
 
 info = {'cart': cart,
         'basis': '6-31g',
-        'charge': 0,
-        'multiplicity': 1}
+        'charge': 1,
+        'mult': 4}
 
-intf = G09Interface(info)
+intf = PyPsiInterface(info)
 
 print intf.GuessDensity()
-print intf.FockEnergy(guessDensity)
+#~ print intf.GuessOccMO()
+#~ print intf.FockEnergy(guessDensity)
