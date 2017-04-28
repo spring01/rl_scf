@@ -50,17 +50,20 @@ class PyPsiInterface(object):
         return self._coreGuessDensity
 
     def FockEnergy(self, densTup):
-        # A new list has to be constructed as it will be altered in PyPsi
-        self._pypsi.JK_CalcAllFromDens(list(densTup))
-        dens = list(densTup)
-        cou = self._pypsi.JK_GetJ()
+        if self._hfExcMix:
+            self._pypsi.JK_CalcAllFromDens(list(densTup))
+            cou = self._pypsi.JK_GetJ()
+            exc = self._pypsi.JK_GetK()
+        else:
+            cou = self._pypsi.JK_DensToJ(list(densTup))
         coreCou = self.oneElecHam + sum(cou) * (2.0 / len(cou))
         if self._hfExcMix:
-            exc = self._pypsi.JK_GetK()
             fock = [coreCou - self._hfExcMix * x for x in exc]
         else:
-            fock = [coreCou for _ in dens]
+            fock = [coreCou for _ in cou]
 
+        # A new list has to be constructed as it will likely be altered in PyPsi
+        dens = list(densTup)
         energy = 0.0
         for f, d in zip(fock, dens):
             energy += (self.oneElecHam + f).ravel().dot(d.ravel())
