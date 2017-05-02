@@ -72,7 +72,7 @@ class PyPsiInterface(object):
 
         if self._dft:
             dftV = self._pypsi.DFT_DensToV(dens)
-            fock = [f + v for v in zip(fock, dftV)]
+            fock = [f + v for f, v in zip(fock, dftV)]
             energy += self._pypsi.DFT_EnergyXC()
 
         return tuple(fock), energy
@@ -89,8 +89,12 @@ class PyPsiInterface(object):
         argsort = np.argsort(orbEigVal)
         coreGuessMO = toOrtho.dot(orOrb[:, argsort])
 
-        # Compute core guess density from
-        guessOccMO = (coreGuessMO[:, :ne] for ne in self.numElecAB)
+        # Compute core guess density
+        if self.numElecAB[0] == self.numElecAB[1]:
+            numElecTup = self.numElecAB[0:1]
+        else:
+            numElecTup = self.numElecAB
+        guessOccMO = (coreGuessMO[:, :ne] for ne in numElecTup)
         return tuple(mo.dot(mo.T) for mo in guessOccMO)
 
 

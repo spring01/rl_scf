@@ -79,8 +79,11 @@ class G09Interface(object):
 
     # Initial guess density matrix
     def GuessDensity(self):
-        numElecAB = tuple(np.unique(self.numElecAB)[::-1])
-        guessOccMO = (self._harrisMO[:, :ne] for ne in numElecAB)
+        if self.numElecAB[0] == self.numElecAB[1]:
+            numElecTup = self.numElecAB[0:1]
+        else:
+            numElecTup = self.numElecAB
+        guessOccMO = (self._harrisMO[:, :ne] for ne in numElecTup)
         return tuple(gmo.dot(gmo.T) for gmo in guessOccMO)
 
     # Construct a list of Fock matrix and calculate energy
@@ -99,7 +102,7 @@ class G09Interface(object):
             fDat.read(self._intBytes)
             energy = struct.unpack('d', fDat.read(self._floatBytes))[0]
             fDat.read(self._intBytes)
-            for _ in range(len(set(self.numElecAB))):
+            for _ in range(len(densTup)):
                 fDat.read(self._intBytes)
                 fock = np.fromfile(fDat, float, nbfSq).reshape(nbf, nbf)
                 fDat.read(self._intBytes)
