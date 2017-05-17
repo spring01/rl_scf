@@ -15,17 +15,18 @@ class CDIIS(object):
     #   fockTup: (fock,) for rhf/rks; (fockA, fockB) for uhf/uks
     #   densTup: (dens,) for rhf/rks; (densA, densB) for uhf/uks
     #   return: (newFock,) for rhf/rks; (newFockA, newFockB) for uhf/uks
-    def NewFock(self, fockTup, densTup):
+    def NewFock(self, fockTup, densTup, numDrop=0):
         # enqueue the most recent Fock matrix and the corresponding commutator
         self._fockList.append(fockTup)
         numUse = len(self._fockList)
         newComm = self._CommWithSpin(fockTup, densTup)
         self._commList.append(newComm)
-        if numUse == 1:
+        numUse -= numDrop
+        if numUse <= 1:
             return fockTup
 
         # update the CDIIS Hessian
-        newHess = np.array(self._commList).dot(newComm)
+        newHess = np.array(self._commList)[-numUse:].dot(newComm)
         self._hess[:, :-1] = self._hess[:, 1:]
         self._hess[:-1, :] = self._hess[1:, :]
         self._hess[-numUse:, -1] = newHess
@@ -43,7 +44,8 @@ class CDIIS(object):
         # compute the extrapolated Fock matrix
         newFockList = []
         for s in range(len(fockTup)):
-            newFockVec = coeffUse.dot([ft[s].ravel() for ft in self._fockList])
+            fockVecs = np.array([ft[s].ravel() for ft in self._fockList])
+            newFockVec = coeffUse.dot(fockVecs[-numUse:])
             newFockList.append(newFockVec.reshape(fockTup[0].shape))
         return tuple(newFockList)
 
