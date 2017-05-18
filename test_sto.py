@@ -155,33 +155,29 @@ def SolveFock(fock):
 
 
 ''' Accelerated Frank-Wolfe with stepsize ? '''
-#~ stepsize = 0.1
-#~ from lciis import LCIIS
-#~ (eigVal, eigVec) = np.linalg.eigh(intf.overlap)
-#~ keep = eigVal > 1.0e-6
-#~ toOrtho = eigVec[:, keep] / np.sqrt(eigVal[keep])[None, :]
-#~ lciis = LCIIS(intf.overlap, toOrtho)
-#~ dens = guessDensity
-#~ for i in range(100):
-    #~ fock, energy = intf.FockEnergy(dens)
-    #~ fock = lciis.NewFock(fock, dens)
-    #~ print i, energy
-    #~ densNew = SolveFock(fock[0])
-    #~ dens = (1.0 - stepsize) * dens[0] + stepsize * densNew[0],
+stepsize = 1.0
+lciis = LCIIS(intf.overlap)
+dens = guessDensity
+for i in range(100):
+    fock, energy = intf.FockEnergy(dens)
+    fock = lciis.NewFock(fock, dens)
+    print i, energy
+    densNew = SolveFock(fock[0])
+    dens = (1.0 - stepsize) * dens[0] + stepsize * densNew[0],
 
 
 
 ''' Accelerated Frank-Wolfe with stepsize ? '''
-stepsize = 0.25
-cdiis = CDIIS(intf.overlap)
-dens = guessDensity
-for i in range(100):
-    numDrop = 1 if i < 50 else 0
-    fock, energy = intf.FockEnergy(dens)
-    fock = cdiis.NewFock(fock, dens, numDrop)
-    print i, energy
-    densNew = SolveFock(fock[0])
-    dens = (1.0 - stepsize) * dens[0] + stepsize * densNew[0],
+#~ stepsize = 0.25
+#~ cdiis = CDIIS(intf.overlap)
+#~ dens = guessDensity
+#~ for i in range(100):
+    #~ numDrop = 1 if i < 50 else 0
+    #~ fock, energy = intf.FockEnergy(dens)
+    #~ fock = cdiis.NewFock(fock, dens, numDrop)
+    #~ print i, energy
+    #~ densNew = SolveFock(fock[0])
+    #~ dens = (1.0 - stepsize) * dens[0] + stepsize * densNew[0],
 
 
 

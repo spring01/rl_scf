@@ -4,13 +4,11 @@ from collections import deque
 
 class LCIIS(object):
 
-    def _init_(self, overlap, toOr, verbose=False, maxNumFock=20):
+    def __init__(self, overlap, verbose=False, maxNumFock=20):
         self._verbose = verbose
         self._fList = deque(maxlen=maxNumFock)
-        self._trFList = deque(maxlen=maxNumFock)
-        self._trDList = deque(maxlen=maxNumFock)
-        self._toOr = toOr
-        self._orTo = overlap.dot(toOr)
+        self._dsList = deque(maxlen=maxNumFock)
+        self._overlap = overlap
         # self._comm[i * numFock + j] = commutator [Fi, Dj]
         self._comm = [None] * maxNumFock**2
         # self._bigMat[i * numFock + j, k * numFock + l] = T(i, j, k, l)
@@ -30,39 +28,39 @@ class LCIIS(object):
         else:
             self._PreUpdateNotFull()
         self._fList.append(fockTup)
-        shape = (self._toOr.shape[0], -1)
-        trFList = [self._toOr.T.dot(fock.reshape(shape)) for fock in fockTup]
-        trDList = [dens.reshape(shape).dot(self._orTo) for dens in densTup]
-        self._trFList.append(trFList)
-        self._trDList.append(trDList)
+
+        dsTup = tuple(dens.dot(self._overlap) for dens in densTup)
+        self._dsList.append(dsTup)
         self._UpdateCommBigMat()
 
         # coeff always has length numFock with 0.0 filled at the front in need
         numFock = len(self._fList)
         shapeTensor = (numFock, numFock, numFock, numFock)
         tensor = self._bigMat[:numFock**2, :numFock**2].reshape(shapeTensor)
-        coeff = np.zeros(numFock)
         for numUse in range(len(tensor), 0, -1):
             tensorUse = tensor[-numUse:, -numUse:, -numUse:, -numUse:]
-            (success, iniCoeffUse) = self._InitialCoeffUse(tensorUse)
+            success, iniCoeffUse = self._InitialCoeffUse(tensorUse)
             if not success:
                 print('_InitialCoeffUse failed; reducing tensor size')
                 continue
-            (success, coeffUse) = self._NewtonSolver(tensorUse, iniCoeffUse)
+            success, coeffUse = self._NewtonSolver(tensorUse, iniCoeffUse)
             if not success:
                 print('_NewtonSolver failed; reducing tensor size')
                 continue
             else:
-                coeff[-len(coeffUse):] = coeffUse
                 break
         # end for
         if self._verbose:
             print('  lciis coeff:')
-            print('  ' + str(coeff).replace('\n', '\n  '))
-        shape = self._fList[0][0].shape
-        return [coeff.dot([fList[spin].ravel()
-                           for fList in self._fList]).reshape(shape)
-                for spin in range(len(self._fList[0]))]
+            print('  ' + str(coeffUse).replace('\n', '\n  '))
+
+        # compute the extrapolated Fock matrix
+        newFockList = []
+        for s in range(len(fockTup)):
+            fockVecs = np.array([ft[s].ravel() for ft in self._fList])
+            newFockVec = coeffUse.dot(fockVecs[-numUse:])
+            newFockList.append(newFockVec.reshape(fockTup[0].shape))
+        return tuple(newFockList)
 
     def _PreUpdateFull(self):
         maxNumFock = self._fList.maxlen
@@ -93,10 +91,10 @@ class LCIIS(object):
         # update self._comm
         update1 = range(numFock - 1, numFock**2 - 1, numFock)
         update2 = range(numFock**2 - numFock, numFock**2)
-        for indComm in update1:
-            self._comm[indComm] = self._Comm((indComm + 1) // numFock - 1, -1)
-        for indComm in update2:
-            self._comm[indComm] = self._Comm(-1, indComm - update2[0])
+        for ind in update1:
+            self._comm[ind] = self._CommVec((ind + 1) // numFock - 1, -1)
+        for ind in update2:
+            self._comm[ind] = self._CommVec(-1, ind - update2[0])
         # update self._bigMat
         update = list(update1) + list(update2)
         full = slice(0, numFock**2)
@@ -104,13 +102,14 @@ class LCIIS(object):
         self._bigMat[update, full] = commFull[update, :].dot(commFull.T)
         self._bigMat[full, update] = self._bigMat[update, full].T
 
-    def _Comm(self, indFock, indDens):
-        def Comm(trF, trD):
-            trFdotOrD = trF.dot(trD)
-            comm = trFdotOrD - trFdotOrD.T
-            return comm[np.triu_indices_from(comm, 1)]
-        zipList = zip(self._trFList[indFock], self._trDList[indDens])
-        return np.concatenate([Comm(trF, trD) for (trF, trD) in zipList])
+    def _CommVec(self, indFock, indDens):
+        zipList = zip(self._fList[indFock], self._dsList[indDens])
+        return np.concatenate([self._Comm(f, ds) for f, ds in zipList])
+
+    def _Comm(self, fock, densOverlap):
+        fds = fock.dot(densOverlap)
+        comm = fds - fds.T
+        return comm[np.triu_indices_from(comm, 1)]
 
     # return (success, cdiis_coefficients)
     def _InitialCoeffUse(self, tensorUse):
